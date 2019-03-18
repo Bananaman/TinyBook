@@ -1,0 +1,957 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.blizzard.com/wow/ui/../FrameXML/UI.xsd">
+    <!--
+
+        Project:   "TinyBook: Compact Spellbook"
+        Author:    VideoPlayerCode
+        URL:       https://github.com/VideoPlayerCode/TinyBook
+        License:   Apache License, Version 2.0
+        Copyright: Small portions of code (mainly the general XML GUI structure) originates from
+                   Blizzard's "FrameXML/SpellBookFrame.lua" and "FrameXML/SpellBookFrame.xml",
+                   extracted from the World of Warcraft 2.4.3 client, for purposes of perfectly
+                   replicating the visual look and feel of the original spellbook. All other code,
+                   including all functions, are written by and the copyright of VideoPlayerCode.
+
+    -->
+    <Script file="TinyBook.lua" />
+    <CheckButton name="TSB_SpellBookSkillLineTabTemplate" virtual="true" hidden="true">
+        <Size>
+            <AbsDimension x="32" y="32" />
+        </Size>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture file="Interface\SpellBook\SpellBook-SkillLineTab">
+                    <Size>
+                        <AbsDimension x="64" y="64" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="-3" y="11" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+            </Layer>
+        </Layers>
+        <Scripts>
+            <OnEnter>
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+                GameTooltip:SetText(self.tooltip);
+            </OnEnter>
+            <OnLeave>
+                GameTooltip:Hide();
+            </OnLeave>
+            <OnClick>
+                TSB_SpellBookSkillLineTab_OnClick(self);
+            </OnClick>
+        </Scripts>
+        <NormalTexture />
+        <HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD" />
+        <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD" />
+    </CheckButton>
+    <Button name="TSB_SpellBookFrameTabButtonTemplate" virtual="true" hidden="true">
+        <Size>
+            <AbsDimension x="128" y="64" />
+        </Size>
+        <HitRectInsets>
+            <AbsInset left="15" right="14" top="13" bottom="15" />
+        </HitRectInsets>
+        <Scripts>
+            <OnEnter>
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT");
+                GameTooltip:SetText(MicroButtonTooltipText(self:GetText(), self.binding), 1.0, 1.0, 1.0);
+            </OnEnter>
+            <OnLeave>
+                GameTooltip:Hide();
+            </OnLeave>
+            <OnClick>
+                TSB_ToggleSpellBook(self.bookType);
+            </OnClick>
+        </Scripts>
+        <ButtonText>
+            <Anchors>
+                <Anchor point="CENTER">
+                    <Offset>
+                        <AbsDimension x="0" y="3" />
+                    </Offset>
+                </Anchor>
+            </Anchors>
+        </ButtonText>
+        <NormalFont inherits="GameFontNormalSmall" />
+        <HighlightFont inherits="GameFontHighlightSmall" />
+        <DisabledFont inherits="GameFontHighlightSmall" />
+        <NormalTexture file="Interface\SpellBook\UI-SpellBook-Tab-Unselected" />
+        <HighlightTexture file="Interface\SpellBook\UI-SpellbookPanel-Tab-Highlight" alphaMode="ADD" />
+    </Button>
+    <CheckButton name="TSB_SpellButtonTemplate" inherits="SecureActionButtonTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="37" y="37" />
+        </Size>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture name="$parentBackground" file="Interface\Spellbook\UI-Spellbook-SpellBackground">
+                    <Size>
+                        <AbsDimension x="64" y="64" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="-3" y="3" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="BORDER">
+                <Texture name="$parentIconTexture" setAllPoints="true" hidden="true" />
+                <FontString name="$parentSpellName" inherits="GameFontNormal" maxLines="3" hidden="true" justifyH="LEFT">
+                    <Size>
+                        <AbsDimension x="103" y="0" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="LEFT" relativePoint="RIGHT">
+                            <Offset>
+                                <AbsDimension x="4" y="0" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <FontString name="$parentSubSpellName" inherits="SubSpellFont" hidden="true" justifyH="LEFT">
+                    <Size>
+                        <AbsDimension x="79" y="18" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT" relativeTo="$parentSpellName" relativePoint="BOTTOMLEFT">
+                            <Offset>
+                                <AbsDimension x="0" y="4" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+            <Layer level="OVERLAY">
+                <Texture name="$parentAutoCastable" file="Interface\Buttons\UI-AutoCastableOverlay" hidden="true">
+                    <Size>
+                        <AbsDimension x="60" y="60" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="CENTER">
+                            <Offset>
+                                <AbsDimension x="0" y="0" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+            </Layer>
+        </Layers>
+        <Frames>
+            <Cooldown name="$parentCooldown" inherits="CooldownFrameTemplate" />
+            <Model name="$parentAutoCast" file="Interface\Buttons\UI-AutoCastButton.mdx" scale="1.22" hidden="true">
+                <Size>
+                    <AbsDimension x="36" y="36" />
+                </Size>
+                <Anchors>
+                    <Anchor point="CENTER">
+                        <Offset>
+                            <AbsDimension x="1" y="1" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        self:SetSequence(0);
+                        self:SetSequenceTime(0, 0);
+                    </OnLoad>
+                </Scripts>
+            </Model>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                TSB_SpellButton_OnLoad(self);
+            </OnLoad>
+            <OnShow>
+                TSB_SpellButton_OnShow(self);
+            </OnShow>
+            <OnHide>
+                TSB_SpellButton_OnHide(self);
+            </OnHide>
+            <OnEvent>
+                TSB_SpellButton_OnEvent(self, event, ...); -- NOTE: "..." is necessary to propagate varargs!
+            </OnEvent>
+            <OnEnter>
+                TSB_SpellButton_OnEnter(self);
+            </OnEnter>
+            <OnLeave>
+                TSB_SpellButton_OnLeave(self);
+            </OnLeave>
+            <PreClick>
+                self:SetChecked(nil); -- NOTE: Blizzard's spellbook does this "PreClick" too.
+            </PreClick>
+            <PostClick>
+                -- NOTE: This is our substitute for "OnClick", since we aren't allowed to touch the secure "OnClick" handler.
+                TSB_SpellButton_PostClick(self, button, down);
+            </PostClick>
+            <OnDragStart>
+                TSB_SpellButton_OnDrag(self);
+            </OnDragStart>
+            <OnReceiveDrag>
+                TSB_SpellButton_OnDrag(self);
+            </OnReceiveDrag>
+        </Scripts>
+        <NormalTexture name="$parentNormalTexture" file="Interface\Buttons\UI-Quickslot2">
+            <Size>
+                <AbsDimension x="64" y="64" />
+            </Size>
+            <Anchors>
+                <Anchor point="CENTER">
+                    <Offset>
+                        <AbsDimension x="0" y="0" />
+                    </Offset>
+                </Anchor>
+            </Anchors>
+        </NormalTexture>
+        <PushedTexture file="Interface\Buttons\UI-Quickslot-Depress" />
+        <HighlightTexture name="$parentHighlight" file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD" />
+        <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD" />
+    </CheckButton>
+    <Frame name="TSB_SpellBookFrame" toplevel="true" movable="true" enableMouse="true" hidden="true" parent="UIParent">
+        <Attributes>
+            <!--
+                Define the panel in ALMOST the same way as Blizzard's spellbook: Left-aligned, show while dead, but order ("pushable") 1.
+
+                The "pushable" order determines a few things: How the frame is sorted (lower "pushable" means appearing closer to the left),
+                and also controls how the frame is closed if there's not enough space on-screen for all windows. A value of "0" means "not
+                pushable" and means that the frame will be automatically closed if ANY other "pushable = 0" frame is opened. The default
+                Blizzard spellbook and MOST of the Blizzard frames use "pushable = 0", which has severe downsides, since "pushable = 0" is
+                "mutually exclusive", as mentioned, and causes the frame to easily be forcibly closed by almost any other frames that appear!
+
+                But meanwhile, we don't want the number to be too high, because then the frame will appear too far to the right, and will
+                not stack nicely (for example, the "profession crafting" would open to the left instead of to the right of our spellbook
+                window if we use a "pushable" value that's >= 4 (or even 3 in some cases)).
+
+                Blizzard's 2.4.3 "pushable" orders for all "left"-frames from "UIPanelWindows" in FrameXML/UIParent.lua and ALL Blizzard addons:
+
+                * 0: ArenaFrame, ArenaRegistrarFrame, BattlefieldFrame, ClassTrainerFrame, FriendsFrame, GossipFrame, GuildRegistrarFrame,
+                InspectFrame, ItemSocketingFrame, ItemTextFrame, LFGParentFrame, MailFrame, MerchantFrame, MinigameFrame, PVPBannerFrame,
+                PetStableFrame, PetitionFrame, QuestFrame, QuestLogFrame, SpellBookFrame, TabardFrame, TaxiFrame.
+                * 1: TradeFrame.
+                * 2: DressUpFrame.
+                * 3: CharacterFrame, TradeSkillFrame.
+                * 4: CraftFrame.
+                * 5: MacroFrame.
+                * 6: BankFrame, PlayerTalentFrame.
+                * 7: LootFrame.
+
+                Any frames with "0" are "mutually exclusive", which is why it's so easy to accidentally close the default spellbook, since it
+                closes whenever you open common "0"-frames such as Battlefield queue NPC, class trainer, friends, any NPC chat, inspecting any
+                player, opening mail, speaking to vendors, viewing pet stable, looking at your quests, or taking a flight path. That's insane!
+
+                From that list, we MUST avoid "0". It's too easy to conflict with almost all other game windows and get automatically closed;
+                and in fact, using "0" slightly messes up our switching back/forth between TinyBook and Blizzard spellbook, since it makes
+                it impossible for the two spellbook GUIs to gracefully co-exist. However, we actually NEVER have TWO spellbooks up at once; as
+                can be confirmed by the fact that you CAN open the character pane (C), dressup (ctrl-click some item), AND spellbook all at once,
+                and then successfully swap between the Blizzard and TinyBook spellbook modes, while only losing a single frame (rather than
+                two, if our code had actually briefly opened two frames side by side).
+
+                But we don't want to be at "3" or higher either (at "3" we'd stack weirdly with the "profession crafting" window (which uses
+                "3") that the user may open from their spellbook: If we open ours first and then open Cooking, it'd stack correctly (spellbook,
+                then profession), but if they /cast Cooking first and then open the spellbook we'd stack weirdly (profession first, then spellbok)).
+
+                That leaves us with two remaining choices: "1" (used by Trade) and "2" (used by DressUpFrame, the window when you ctrl-click
+                on items to look at their appearance).
+
+                We'll select "1", which ensures that our window won't get auto-closed as easily as a "0" (at "1" or higher we'll only get
+                auto-closed if we're the LEFTMOST window and the game is out of screen-space), and it also ensures that we're always properly
+                arranged on the left side of the "profession crafting" window. It does however mean that we're stacking with the exact same
+                "pushable priority/order" as the Trade window, which means that their arrangement will be semi-unpredictable: If the user
+                opens the spellbook first, and then opens Trade, then they'll appear as "spellbook, trade". If they instead open Trade first,
+                and then the spellbook, then they'll appear as "trade, spellbook". But that's actually kind of intuitive: If you're viewing
+                the spellbook and then open a Trade, you'll see the spellbook to the left of Trade, exactly as Blizzard's normal spellbook (whose
+                "pushable=0" value would place it to the left of Trade). On the other hand, if you open Trade, and then somehow decide to open
+                the spellbook, it will appear on the RIGHT of the trade, which is kinda nice actually, since it means Trade won't jump around!
+
+                NOTE: To make this perfect/consistent, we're also "enhancing" the regular Blizzard spellbook (during "TSB_SpellBookFrame_OnLoad"),
+                to give it the EXACT same "pushable = 1" value. That way, we liberate the Blizzard spellbook from auto-closing too, AND we ensure
+                proper stacking if the user is viewing a Trade window and Spellbook and decides to swap between Blizzard and TinyBook modes. If we
+                DIDN'T apply the same priority, the Spellbook WOULD then jump back and forth between the left and right sides of the Trade window!
+            -->
+            <Attribute name="UIPanelLayout-defined" type="boolean" value="true"/>
+            <Attribute name="UIPanelLayout-enabled" type="boolean" value="true"/>
+            <Attribute name="UIPanelLayout-area" type="string" value="left"/>
+            <Attribute name="UIPanelLayout-pushable" type="number" value="1"/>
+            <Attribute name="UIPanelLayout-whileDead" type="boolean" value="true"/>
+        </Attributes>
+        <Size>
+            <AbsDimension x="384" y="512" />
+        </Size>
+        <Anchors>
+            <Anchor point="TOPLEFT">
+                <Offset>
+                    <AbsDimension x="0" y="-104" />
+                </Offset>
+            </Anchor>
+        </Anchors>
+        <HitRectInsets>
+            <AbsInset left="0" right="30" top="0" bottom="70" />
+        </HitRectInsets>
+        <Layers>
+            <Layer level="BACKGROUND">
+                <Texture file="Interface\Spellbook\Spellbook-Icon">
+                    <Size>
+                        <AbsDimension x="58" y="58" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT">
+                            <Offset>
+                                <AbsDimension x="10" y="-8" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </Texture>
+            </Layer>
+            <Layer level="ARTWORK">
+                <Texture file="Interface\Spellbook\UI-SpellbookPanel-TopLeft">
+                    <Size>
+                        <AbsDimension x="256" y="256" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPLEFT" />
+                    </Anchors>
+                </Texture>
+                <Texture file="Interface\Spellbook\UI-SpellbookPanel-TopRight">
+                    <Size>
+                        <AbsDimension x="128" y="256" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="TOPRIGHT" />
+                    </Anchors>
+                </Texture>
+                <Texture file="Interface\Spellbook\UI-SpellbookPanel-BotLeft">
+                    <Size>
+                        <AbsDimension x="256" y="256" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMLEFT" />
+                    </Anchors>
+                </Texture>
+                <Texture file="Interface\Spellbook\UI-SpellbookPanel-BotRight">
+                    <Size>
+                        <AbsDimension x="128" y="256" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMRIGHT" />
+                    </Anchors>
+                </Texture>
+                <FontString name="TSB_SpellBookTitleText" inherits="GameFontNormal" text="SPELLBOOK">
+                    <Anchors>
+                        <Anchor point="CENTER">
+                            <Offset>
+                                <AbsDimension x="6" y="230" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+                <FontString name="TSB_SpellBookPageText" inherits="GameFontNormal">
+                    <Size>
+                        <AbsDimension x="102" y="0" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOM">
+                            <Offset>
+                                <AbsDimension x="-14" y="96" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <Button name="TSB_SpellBookFrameTabButton1" inherits="TSB_SpellBookFrameTabButtonTemplate">
+                <Anchors>
+                    <Anchor point="CENTER" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="79" y="61" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <DisabledTexture file="Interface\SpellBook\UI-SpellBook-Tab1-Selected" />
+            </Button>
+            <Button name="TSB_SpellBookFrameTabButton2" inherits="TSB_SpellBookFrameTabButtonTemplate">
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="TSB_SpellBookFrameTabButton1" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="-20" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <DisabledTexture file="Interface\SpellBook\UI-SpellBook-Tab1-Selected" />
+            </Button>
+            <Button name="TSB_SpellBookFrameTabButton3" inherits="TSB_SpellBookFrameTabButtonTemplate">
+                <Anchors>
+                    <Anchor point="LEFT" relativeTo="TSB_SpellBookFrameTabButton2" relativePoint="RIGHT">
+                        <Offset>
+                            <AbsDimension x="-20" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <DisabledTexture file="Interface\SpellBook\UI-SpellBook-Tab3-Selected" />
+            </Button>
+            <Button name="TSB_SpellBookPrevPageButton">
+                <Size>
+                    <AbsDimension x="32" y="32" />
+                </Size>
+                <Anchors>
+                    <Anchor point="CENTER" relativeTo="TSB_SpellBookFrame" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="50" y="105" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <FontString inherits="GameFontNormal" justifyH="LEFT" text="PREV">
+                            <Anchors>
+                                <Anchor point="LEFT" relativeTo="TSB_SpellBookPrevPageButton" relativePoint="RIGHT" />
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        TSB_ChangePageButton_OnClick(self, -1);
+                    </OnClick>
+                </Scripts>
+                <NormalTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Up" />
+                <PushedTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Down" />
+                <DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-PrevPage-Disabled" />
+                <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD" />
+            </Button>
+            <Button name="TSB_SpellBookNextPageButton">
+                <Size>
+                    <AbsDimension x="32" y="32" />
+                </Size>
+                <Anchors>
+                    <Anchor point="CENTER" relativeTo="TSB_SpellBookFrame" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="314" y="105" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="BACKGROUND">
+                        <FontString inherits="GameFontNormal" justifyH="RIGHT" text="NEXT">
+                            <Anchors>
+                                <Anchor point="RIGHT" relativeTo="TSB_SpellBookNextPageButton" relativePoint="LEFT" />
+                            </Anchors>
+                        </FontString>
+                    </Layer>
+                </Layers>
+                <Scripts>
+                    <OnClick>
+                        TSB_ChangePageButton_OnClick(self, 1);
+                    </OnClick>
+                </Scripts>
+                <NormalTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Up" />
+                <PushedTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Down" />
+                <DisabledTexture file="Interface\Buttons\UI-SpellbookIcon-NextPage-Disabled" />
+                <HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD" />
+            </Button>
+            <Button name="TSB_SpellBookCloseButton" inherits="UIPanelCloseButton">
+                <Anchors>
+                    <Anchor point="CENTER" relativeTo="TSB_SpellBookFrame" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-44" y="-25" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </Button>
+            <Button name="TSB_SpellBookMacrosButton" inherits="UIPanelButtonTemplate,SecureActionButtonTemplate" text="MACROS">
+                <!--
+                    This is a properly localized ("MACROS" is locale-dependent) button for opening the "Edit Macros" panel,
+                    which is very convenient for users, since they no longer have to use the game menu or typing "/macro".
+
+                    NOTE: The macro frame will actually stack VERY nicely with our spellbook. They use a "pushable" value of "5",
+                    and we use "1", which means that we'll always appear to the left of the Macros window, and neither of us will get
+                    auto-closed by other common "pushable 0" windows opening (see "UIPanelLayout-pushable" notes above for details).
+
+                    NOTE: We only add this "Macros"-button feature to OUR spellbook; we don't add a similar one to Blizzard's GUI. Mainly
+                    because people may be running other addons (like Clique) that have added buttons to Blizzard's book, and we don't
+                    want to risk overlapping. So it's best to just add the button to our frame where we KNOW there's no GUI conflicts.
+                -->
+                <Size>
+                    <AbsDimension x="84" y="22"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="CENTER" relativeTo="TSB_SpellBookFrame" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="122" y="-55"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Attributes>
+                    <Attribute name="type" value="macro" />
+                    <Attribute name="macrotext" value="/click GameMenuButtonMacros" /> <!-- Default Macro. -->
+                </Attributes>
+                <Scripts>
+                    <!--
+                        DISABLED ONCLICK HANDLER:
+
+                        This code has been disabled, and we're using a "SecureActionButtonTemplate" instead, to avoid tainting
+                        any of Blizzard's code whatsoever. Technically, it SEEMED fine to use the code below, but it means that
+                        our addon is the "origin" of requests to "ShowMacroFrame" which in turn calls LoadAddOn("Blizzard_MacroUI"),
+                        ShowUIPanel(MacroFrame), etc. And yes, technically "ShowUIPanel(SomeSecureFrame)" doesn't propagate taint
+                        to the target frame at all (and "LoadAddOn" is PROBABLY not propagating taint either, since that would
+                        be pretty stupid since that function just requests that WoW "loads an addon"), and everything SEEMED to
+                        work perfectly with the code below...
+
+                        However, there COULD be hidden taint issues. So instead, we're going to be completely safe by dynamically
+                        sending secure clicks to the game menu's "Macros" button, or the Macro editor's "Exit" button, so that
+                        the game treats everything as completely legitimate clicks on their intended GUI buttons for opening or
+                        closing the Macro editor. Also note that we don't mute the default sounds played by the buttons we click,
+                        since they give us nice, proper audio feedback without having to do any PlaySound calls ourselves! ;-)
+
+                        <OnClick>
+                            if (TSB_CombatLockdown and TSB_CombatLockdown.inCombat) then
+                                - Protect against the "impossible" scenario where this (hidden-in-combat) button is SOMEHOW clicked in combat.
+                                DEFAULT_CHAT_FRAME:AddMessage('Macros cannot be modified in combat.');
+                                return;
+                            end
+                            if (MacroFrame and MacroFrame:IsShown()) then
+                                HideUIPanel(MacroFrame); - Same thing their "MacroExitButton" does.
+                            else
+                                ShowMacroFrame(); - Same thing that "GameMenuButtonMacros" and "/macro" does.
+                            end
+                        </OnClick>
+                    -->
+                    <PreClick>
+                        if (TSB_CombatLockdown and TSB_CombatLockdown.inCombat) then
+                            return; -- We cannot modify the secure button attributes in-combat.
+                        end
+
+                        if (MacroFrame and MacroFrame:IsShown() and MacroExitButton and MacroExitButton:IsEnabled()) then
+                            self:SetAttribute("macrotext", "/click MacroExitButton"); -- Saves changes and closes the Macro editor.
+                        else
+                            self:SetAttribute("macrotext", "/click GameMenuButtonMacros"); -- Loads and shows the Macro editor.
+                        end
+                    </PreClick>
+                </Scripts>
+            </Button>
+            <CheckButton name="TSB_SpellButton1" inherits="TSB_SpellButtonTemplate" id="1">
+                <Anchors>
+                    <Anchor point="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="34" y="-85" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton2" inherits="TSB_SpellButtonTemplate" id="7">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton1">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton3" inherits="TSB_SpellButtonTemplate" id="2">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton1" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-14" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton4" inherits="TSB_SpellButtonTemplate" id="8">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton3">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton5" inherits="TSB_SpellButtonTemplate" id="3">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton3" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-14" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton6" inherits="TSB_SpellButtonTemplate" id="9">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton5">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton7" inherits="TSB_SpellButtonTemplate" id="4">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton5" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-14" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton8" inherits="TSB_SpellButtonTemplate" id="10">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton7">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton9" inherits="TSB_SpellButtonTemplate" id="5">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton7" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-14" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton10" inherits="TSB_SpellButtonTemplate" id="11">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton9">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton11" inherits="TSB_SpellButtonTemplate" id="6">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton9" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-14" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellButton12" inherits="TSB_SpellButtonTemplate" id="12">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellButton11">
+                        <Offset>
+                            <AbsDimension x="157" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab1" inherits="TSB_SpellBookSkillLineTabTemplate" id="1">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="-32" y="-65" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab2" inherits="TSB_SpellBookSkillLineTabTemplate" id="2">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab1" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab3" inherits="TSB_SpellBookSkillLineTabTemplate" id="3">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab2" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab4" inherits="TSB_SpellBookSkillLineTabTemplate" id="4">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab3" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab5" inherits="TSB_SpellBookSkillLineTabTemplate" id="5">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab4" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab6" inherits="TSB_SpellBookSkillLineTabTemplate" id="6">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab5" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab7" inherits="TSB_SpellBookSkillLineTabTemplate" id="7">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab6" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <CheckButton name="TSB_SpellBookSkillLineTab8" inherits="TSB_SpellBookSkillLineTabTemplate" id="8">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab7" relativePoint="BOTTOMLEFT">
+                        <Offset>
+                            <AbsDimension x="0" y="-17" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </CheckButton>
+            <Frame name="TSB_SpellBookTabFlashFrame" hidden="true">
+                <Size>
+                    <AbsDimension x="10" y="10" />
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookSkillLineTab1">
+                        <Offset>
+                            <AbsDimension x="0" y="0" />
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Layers>
+                    <Layer level="OVERLAY">
+                        <Texture name="TSB_SpellBookSkillLineTab1Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab1" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab2Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab2" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab3Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab3" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab4Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab4" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab5Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab5" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab6Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab6" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab7Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab7" />
+                            </Anchors>
+                        </Texture>
+                        <Texture name="TSB_SpellBookSkillLineTab8Flash" file="Interface\Buttons\CheckButtonGlow" alphaMode="ADD" hidden="true">
+                            <Size>
+                                <AbsDimension x="64" y="64" />
+                            </Size>
+                            <Anchors>
+                                <Anchor point="CENTER" relativeTo="TSB_SpellBookSkillLineTab8" />
+                            </Anchors>
+                        </Texture>
+                    </Layer>
+                </Layers>
+            </Frame>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                TSB_SpellBookFrame_OnLoad(self);
+            </OnLoad>
+            <OnShow>
+                TSB_SpellBookFrame_OnShow(self);
+                -- NOTE: Hiding the "spell rank" window is just to ensure there's NO risk that it's ever wrongly visible when the spellbook opens.
+                TSB_RankViewer_Close();
+            </OnShow>
+            <OnHide>
+                -- NOTE: We DON'T need to hide the RankViewer here, since it's parented to us and hides automatically when the main spellbook hides;
+                -- and yes, unlike ":Hide", the parenting means that hiding works properly in-combat (despite RankViewer's secure-button children).
+                TSB_SpellBookFrame_OnHide(self);
+            </OnHide>
+            <OnEvent>
+                TSB_SpellBookFrame_OnEvent(self, event, ...); -- NOTE: "..." is necessary to propagate varargs!
+            </OnEvent>
+            <OnLeave>
+                -- NOTE: "OnLeave" triggers both when leaving the spellbook frame itself, AND when moving the cursor onto a mouse-enabled element ON
+                -- the frame, but NOT when the spellbook frame hides. However, see our notes in "OnHide" above for why that isn't a problem.
+
+                -- We don't do anything if the mouse "left the spellbook frame" BUT is now hovering over the "spell rank" list window or its buttons!
+                -- NOTE: If we don't perform this check, then there's a VERY nasty bug if you hover over a spell to open its rank flyout, then move the
+                -- mouse cursor out onto the spellbook frame again, and THEN move it onto the "spell rank" list window. That last step would count
+                -- as "leaving spellbook frame", which wrongly closes the "ranks" window instantly AND annoyingly leaves the rank's tooltip on-screen.
+                -- And in fact, that bug is EXTREMELY EASY to trigger via accidents such as slipping outside/overshooting the spell rank frame when
+                -- you're trying to target a specific rank button, and then moving your mouse back onto the frame to hover over a rank button again.
+                -- Without THIS safeguard, we'd close their window and very quickly piss off the user, since they'd constantly fear mouse-accidents.
+                local mouseFocus = GetMouseFocus();
+                if (mouseFocus and (
+                    (mouseFocus == TSB_RankViewer) -- Extremely unlikely since the "RankViewer" is a 1x1 pixel window, hehe.
+                    or (mouseFocus:GetParent() == TSB_RankViewer) -- All spell rank buttons are parented to the "RankViewer".
+                )) then
+                    return;
+                end
+
+                -- If we've come this far, we're hovering over something that ISN'T the spellbook frame or the "spell ranks" window/buttons, which
+                -- means that we should close the "ranks" window now. And since moving over mouse-enabled elements on the spellbook counts as "leaving
+                -- the spellbook frame", it means that we nicely and cleanly close the "ranks" window when we mouse over elements like the other spell
+                -- buttons (even with 0 ranks), the "spell school" tabs, prev/next navigation, "Macros" button, Close button, or the bottom-tabs.
+                -- NOTE: The "OnLeave" of any frame we leave (spellbook frame) always triggers BEFORE the "OnEnter" of the frame we enter (such as
+                -- a spellbutton), which means we NEVER have to worry about this accidentally "closing ranks for the spellbutton we JUST entered".
+                TSB_RankViewer_Close();
+            </OnLeave>
+        </Scripts>
+    </Frame>
+    <!--
+        Create two buttons to swap back and forth between the Blizzard (regular) spellbook and the TinyBook spellbook frames.
+        We'll place one of the buttons within TSB_SpellBookFrame, and the other within Blizzard's SpellBookFrame.
+    -->
+    <Button name="TSB_SpellBookFrameTabButton4" inherits="TSB_SpellBookFrameTabButtonTemplate,SecureActionButtonTemplate" parent="TSB_SpellBookFrame">
+        <Anchors>
+            <Anchor point="CENTER" relativePoint="BOTTOMLEFT">
+                <Offset>
+                    <AbsDimension x="79" y="61" />
+                </Offset>
+            </Anchor>
+        </Anchors>
+        <DisabledTexture file="Interface\SpellBook\UI-SpellBook-Tab1-Selected" />
+        <Attributes>
+            <!--
+                BUTTON WHICH OPENS THE DEFAULT BLIZZARD SPELLBOOK (FROM TINYBOOK).
+
+                The Blizzard spellbook will open on the same bottom-tab and "spell school" as the TinyBook spellbook!
+
+                Requires a very complicated workaround to prevent tainting the regular, secure "Blizzard spellbook" frame:
+
+                We are NOT allowed to directly call the "ToggleSpellBook()" API (not even via "securecall()"), since our tainted execution
+                path would TAINT that function call and prevent the user from casting any spells via the default Blizzard spellbook UI.
+
+                Likewise, we are NOT allowed to use a secure frame to run a macro with "/run ToggleSpellBook(BOOKTYPE_SPELL)", since
+                that's also prohibited (even when manually typed in the regular in-game chat field). Such execution is somehow treated
+                as tainted even though it comes from a secure button...
+
+                The ONLY thing we can do, to securely open the spellbook WITHOUT tainting it, is to send a SECURE CLICK to the default
+                "toggle spellbook" microbar button (which is thankfully clickable even if it's hidden on-screen). So what we're doing
+                below is to send a secure click to a Blizzard button which IS allowed to run "ToggleSpellBook()". This properly
+                opens the Blizzard spellbook without tainting it, and allows the user to cast spells from it.
+
+                However, before clicking, we're first calling a TinyBook function to tell ourselves to ALLOW the next "ToggleSpellBook()"
+                API call, so that we don't instantly close the Blizzard frame. And we use "&#10;" to encode newlines in XML ("\n" is wrong).
+
+                As for handling the "switch to pet bottom-tab" and "switch to spell school right-tab"; we do that by DYNAMICALLY rewriting
+                the button's macro in its PreClick handler (which runs BEFORE the secure OnClick). The code for that is in the function
+                "TSB_TinyBookToBlizzard", which analyzes the TinyBook spellbook view and generates a macro which clicks on the same tabs
+                in the Blizzard GUI! The final result is that we're able to open Blizzard's spellbook to ANY tab we want!
+
+                NOTE: There IS also a "type:click" secure action that we could have used, which is basically the same as the "/click"
+                macro we settled on, but doesn't require parsing of a macro. However, it requires an object-ref to the frame to click,
+                so we cannot set up that reference from pure XML, AND it wouldn't be able to click multiple buttons (which we need).
+
+                ALSO NOTE: The "[TSB_]SpellBookFrameTabButtonTemplate" templates require "bookType" and "binding" properties to exist when
+                their default "OnClick" and "OnEnter"/"OnLeave" handlers run. The OnClick is overwritten by "SecureActionButtonTemplate",
+                and we'll manually overwrite the OnEnter and OnLeave with empty ones that do nothing (the defaults try to show a tooltip).
+
+                LAST NOTE: We are NOT able to DIRECTLY EDIT the Blizzard spellbook variables to open the PET spellbook or any specific "spell
+                school" (right-side) tabs, since changing ANY variables on the default spellbook taints it! For example, we are **NOT ALLOWED**
+                to edit "SpellBookFrame.bookType", "SpellBookFrame.selectedSkillLine" or the "SPELLBOOK_PAGENUMBERS" table, which define
+                the current book type (spell/pet), school-tab and page-number of each tab, respectively... The reason why we can't touch
+                those variables is because non-Blizzard code is treated as "tainted", and anytime we edit a Blizzard variable would mark
+                it as tainted too, and then the Blizzard code detects that it's reading from a tainted variable and crashes... But THANKFULLY
+                we're able to jump to ANY bottom-tab/spell school by emulating the clicks on the appropriate GUI buttons instead... Phew!
+            -->
+            <Attribute name="type" value="macro" />
+            <Attribute name="macrotext" value="/run TSB_AllowNextBlizzardSpellBook()&#10;/click SpellbookMicroButton" /> <!-- Default Macro. -->
+        </Attributes>
+        <Scripts>
+            <OnLoad>
+                self:SetText("Regular Book");
+                TSB_RePosition_FrameTab4();
+                self:Show();
+            </OnLoad>
+            <OnEnter></OnEnter>
+            <OnLeave></OnLeave>
+            <PreClick>
+                -- Dynamically edit the button macro text to make it swap to the correct bottom-tab/spell school.
+                -- NOTE: This "PreClick" event triggers before the secure "OnClick", which is how we're able to rewrite the action before the click.
+                TSB_TinyBookToBlizzard();
+            </PreClick>
+        </Scripts>
+    </Button>
+    <Button name="SpellBookFrameTabButton4" inherits="SpellBookFrameTabButtonTemplate,SecureActionButtonTemplate" parent="SpellBookFrame">
+        <Anchors>
+            <Anchor point="CENTER" relativePoint="BOTTOMLEFT">
+                <Offset>
+                    <AbsDimension x="79" y="61" />
+                </Offset>
+            </Anchor>
+        </Anchors>
+        <DisabledTexture file="Interface\SpellBook\UI-SpellBook-Tab1-Selected" />
+        <Attributes>
+            <!--
+                BUTTON WHICH OPENS THE TINYBOOK SPELLBOOK (FROM BLIZZARD'S SPELLBOOK).
+
+                The TinyBook spellbook will open on the same bottom-tab and "spell school" as the Blizzard spellbook!
+
+                NOTE: This doesn't need to be a "secure button", but we do it that way for easy consistency with "TSB_SpellBookFrameTabButton4".
+            -->
+            <Attribute name="type" value="macro" />
+            <Attribute name="macrotext" value="/run TSB_BlizzardToTinyBook()" />
+        </Attributes>
+        <Scripts>
+            <OnLoad>
+                self:SetText("TinyBook");
+                TSB_RePosition_FrameTab4();
+                self:Show();
+
+                -- Take care of automatically placing this frame at the proper offset within Blizzard's spellbook.
+                -- NOTE: Blizzard runs "SpellBookFrame_Update": OnShow, "SPELLS_CHANGED", and "spell school tab" OnClick...
+                -- UPDATE: Nah, this is completely overkill. We ONLY need to reposition it when SPELLS_CHANGED, and can use our own handler for that.
+                --hooksecurefunc("SpellBookFrame_Update", TSB_RePosition_FrameTab4);
+            </OnLoad>
+            <OnEnter></OnEnter>
+            <OnLeave></OnLeave>
+        </Scripts>
+    </Button>
+</Ui>

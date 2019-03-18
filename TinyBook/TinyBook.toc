@@ -1,0 +1,10 @@
+## Interface: 20400
+## Title: TinyBook: Compact Spellbook
+## Author: VideoPlayerCode
+## Version: 1.0.0
+## Notes: Clean and compact spellbook which only shows the highest rank of each spell.
+## X-License: Apache License, Version 2.0
+## X-Website: https://github.com/VideoPlayerCode/TinyBook
+
+TinyBook.xml
+RankViewer.xml

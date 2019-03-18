@@ -1,0 +1,113 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.blizzard.com/wow/ui/../FrameXML/UI.xsd">
+    <!--
+
+        Project:   "TinyBook: Compact Spellbook"
+        Author:    VideoPlayerCode
+        URL:       https://github.com/VideoPlayerCode/TinyBook
+        License:   Apache License, Version 2.0
+        Copyright: Small portions of code (mainly the general XML GUI structure) originates from
+                   Blizzard's "FrameXML/SpellBookFrame.lua" and "FrameXML/SpellBookFrame.xml",
+                   extracted from the World of Warcraft 2.4.3 client, for purposes of perfectly
+                   replicating the visual look and feel of the original spellbook. All other code,
+                   including all functions, are written by and the copyright of VideoPlayerCode.
+
+    -->
+    <Script file="RankViewer.lua" />
+    <Button name="TSB_SpellRankButtonTemplate" inherits="SecureActionButtonTemplate" virtual="true">
+        <Size>
+            <AbsDimension x="30" y="30" />
+        </Size>
+        <Layers>
+            <Layer level="BORDER">
+                <Texture name="$parentIconTexture" setAllPoints="true" hidden="true" />
+                <FontString name="$parentRankName" inherits="NumberFontNormal" maxLines="1" hidden="true" justifyH="RIGHT" justifyV="BOTTOM">
+                    <Size>
+                        <AbsDimension x="28" y="28" />
+                    </Size>
+                    <Anchors>
+                        <Anchor point="BOTTOMRIGHT" relativePoint="BOTTOMRIGHT">
+                            <Offset>
+                                <AbsDimension x="-2" y="2" />
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <Cooldown name="$parentCooldown" inherits="CooldownFrameTemplate" />
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                TSB_SpellRankButton_OnLoad(self);
+            </OnLoad>
+            <OnShow>
+                TSB_SpellRankButton_OnShow(self);
+            </OnShow>
+            <OnHide>
+                TSB_SpellRankButton_OnHide(self);
+            </OnHide>
+            <OnEvent>
+                TSB_SpellRankButton_OnEvent(self, event, ...); -- NOTE: "..." is necessary to propagate varargs!
+            </OnEvent>
+            <OnEnter>
+                TSB_SpellRankButton_OnEnter(self);
+            </OnEnter>
+            <OnLeave>
+                TSB_SpellRankButton_OnLeave(self);
+            </OnLeave>
+            <PreClick>
+                self:SetChecked(nil); -- NOTE: Blizzard's spellbook does this "PreClick" too.
+            </PreClick>
+            <PostClick>
+                -- NOTE: This is our substitute for "OnClick", since we aren't allowed to touch the secure "OnClick" handler.
+                TSB_SpellRankButton_PostClick(self, button, down);
+            </PostClick>
+            <OnDragStart>
+                TSB_SpellRankButton_OnDrag(self);
+            </OnDragStart>
+            <OnReceiveDrag>
+                TSB_SpellRankButton_OnDrag(self);
+            </OnReceiveDrag>
+        </Scripts>
+        <NormalTexture name="$parentNormalTexture" file="Interface\Buttons\UI-Quickslot2">
+            <Size>
+                <AbsDimension x="48" y="48" />
+            </Size>
+            <Anchors>
+                <Anchor point="CENTER">
+                    <Offset>
+                        <AbsDimension x="0" y="0" />
+                    </Offset>
+                </Anchor>
+            </Anchors>
+        </NormalTexture>
+        <PushedTexture file="Interface\Buttons\UI-Quickslot-Depress" />
+        <HighlightTexture name="$parentHighlight" file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD" />
+        <CheckedTexture file="Interface\Buttons\CheckButtonHilight" alphaMode="ADD" />
+    </Button>
+    <Frame name="TSB_RankViewer" enableMouse="false" hidden="true" parent="TSB_SpellBookFrame">
+        <!--
+            This "flyout" frame remains hidden until the user hovers over a spell that contains multiple ranks.
+
+            At that moment, it appears next to the spell-button and shows all available ranks.
+
+            This container frame is transparent, doesn't absorb mouse events, and only displays the buttons.
+            The buttons themselves are dynamically created at runtime, to fit an unlimited amount of spell ranks.
+
+            NOTE: OnEnter/OnLeave events would be totally useless on "TSB_RankViewer" since it's 1x1 pixels,
+            and it's also completely covered by buttons that absorb all mouse-events. ;-)
+        -->
+        <Size>
+            <AbsDimension x="1" y="1" />
+        </Size>
+        <Frames>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                TSB_RankViewer_OnLoad(self);
+            </OnLoad>
+        </Scripts>
+    </Frame>
+</Ui>
