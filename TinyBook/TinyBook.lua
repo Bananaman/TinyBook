@@ -1730,6 +1730,7 @@ function TSB_RebuildSpellList()
     end
 
     -- Empty the existing spell list and build a new list for the current "spell school" tab.
+    SPELL_ID_TAB_MAX = 0; -- Always reset "max spell ID for this tab" to zero first, just in case there were no spells below.
     if (numSpells and numSpells >= 1) then -- Only scan if we have a non-nil, positive amount of spells in the given spell school/tab...
         local previousSpellName, currentSpellName;
         SPELL_ID_TAB_MAX = offset + numSpells; -- Tab's slot offset + how many spells that tab has; determines maximum valid slot ID (inclusive) on that tab.
