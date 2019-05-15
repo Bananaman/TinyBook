@@ -639,6 +639,15 @@ local function TSB_EnhanceBlizzardSpellbook()
             -- NOTE: We DON'T proceed with handling this click if the Blizzard frame is HIDDEN and yet somehow got clicked (ie. via "/click" macros).
             -- NOTE: "GetChecked()" ensures that Blizzard's OnClick handler has accepted the click and made the tab "checked" (active).
             if (self:GetChecked() and SpellBookFrame:IsShown()) then
+                -- When Blizzard's spellbook is visible, but TinyBook is hidden, we should always sync the "selected spell school tab",
+                -- to ensure proper behavior when the user opens Blizzard book, changes tab, closes Blizzard (ie. via escape/close-button), and
+                -- then later opens the TinyBook window. This code will ensure that TinyBook views the tab that they viewed in Blizzard's book.
+                -- NOTE: We don't need to sync the "bookType" variable, since the USER always chooses which spellbook they open when re-opening!
+                if (not TSB_SpellBookFrame:IsShown()) then
+                    TSB_SpellBookFrame.selectedSkillLine = SpellBookFrame.selectedSkillLine;
+                end
+
+                -- Sync tab flashing state.
                 local tinybookTabButton = _G["TSB_"..self:GetName()]; -- Adds "TSB_" prefix, to get TinyBook's equivalent button.
                 if (tinybookTabButton) then
                     TSB_SkillLineFlash("stoptab", tinybookTabButton); -- Stop flashing that "spell school" tab in the TinyBook spellbook.
