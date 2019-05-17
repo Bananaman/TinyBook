@@ -221,6 +221,12 @@ function TSB_SpellRankButton_OnLoad(self)
     self:SetAttribute("type*", "spell");
     self:SetAttribute("CHATLINK-spell", ATTRIBUTE_NOOP);
     self:SetAttribute("PICKUPACTION-spell", ATTRIBUTE_NOOP);
+
+    -- Run all registered "third-party addon support" callbacks for this button.
+    -- NOTE: We do this here since these buttons are created dynamically, on-demand.
+    for k,callback in ipairs(TSB_SpellBookFrame.thirdPartyHooks.rankButtons) do
+        callback(self);
+    end
 end
 
 function TSB_SpellRankButton_OnShow(self)

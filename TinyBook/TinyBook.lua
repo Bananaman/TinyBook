@@ -658,6 +658,20 @@ local function TSB_EnhanceBlizzardSpellbook()
     end
 end
 
+local function TSB_InjectThirdPartySupport()
+    -- Holds data about which addons we've loaded support for, as well as which hooks we must run to support them.
+    TSB_SpellBookFrame.thirdPartyAddons = {};
+    TSB_SpellBookFrame.thirdPartyHooks = {
+        bookOnShow = {},
+        bookOnHide = {},
+        mainButtons = {},
+        rankButtons = {},
+    };
+
+    -- Load the various addon support code.
+    -- NOTE: No third party addons are implemented yet!
+end
+
 function TSB_SpellBookFrame_OnLoad(self)
     -- NOTE: This assignment is necessary for making the global into a local (see top of this file).
     TSB_SpellBookFrame = self;
@@ -916,6 +930,17 @@ function TSB_SpellBookFrame_OnLoad(self)
     -- Register combat lockdown handler, and set up initial "reopen after combat" state.
     self.reopenAfterCombat = false;
     TSB_CombatLockdown:registerCallback("HandleCombatLockdown", TSB_HandleCombatLockdown);
+
+    -- Inject code for supported 3rd party addons.
+    TSB_InjectThirdPartySupport();
+
+    -- Run all registered "third-party addon support" callbacks for our spellbuttons.
+    -- NOTE: The spellbuttons are loaded via XML *before* our main frame, which is why we can't do this in "TSB_SpellButton_OnLoad" instead.
+    for i,callback in ipairs(TSB_SpellBookFrame.thirdPartyHooks.mainButtons) do
+        for j,btn in ipairs(TSB_AllSpellButtons) do
+            callback(btn);
+        end
+    end
 end
 
 function TSB_SpellBookFrame_OnEvent(self, event, ...)
@@ -1027,6 +1052,11 @@ function TSB_SpellBookFrame_OnShow(self)
     -- exactly as intended. So they don't lose any important functionality!
     --MultiActionBar_ShowAllGrids();
     TSB_UpdateMicroButtons();
+
+    -- Run all registered "third-party addon support" callbacks.
+    for k,callback in ipairs(TSB_SpellBookFrame.thirdPartyHooks.bookOnShow) do
+        callback();
+    end
 end
 
 function TSB_SpellBookFrame_OnHide(self)
@@ -1043,6 +1073,11 @@ function TSB_SpellBookFrame_OnHide(self)
     -- Hide multibar slots... Update: Actually, no...
     -- NOTE: See "TSB_SpellBookFrame_OnShow" comment for why we cannot call this function!
     --MultiActionBar_HideAllGrids();
+
+    -- Run all registered "third-party addon support" callbacks.
+    for k,callback in ipairs(TSB_SpellBookFrame.thirdPartyHooks.bookOnHide) do
+        callback();
+    end
 end
 
 function TSB_UpdateMicroButtons()
