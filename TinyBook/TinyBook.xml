@@ -537,6 +537,32 @@
                     </PreClick>
                 </Scripts>
             </Button>
+            <Button name="TSB_SpellBookCliqueButton" inherits="UIPanelButtonTemplate" hidden="true">
+                <Size>
+                    <AbsDimension x="84" y="22"/>
+                </Size>
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="TSB_SpellBookMacrosButton" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="7" y="0"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+                <Scripts>
+                    <OnLoad>
+                        self:SetText("Clique");
+                    </OnLoad>
+                    <OnClick>
+                        if (Clique) then
+                            Clique:Toggle();
+                        else
+                            -- NOTE: This is just a failsafe, since this button starts out hidden and only ever becomes visible if Clique is loaded.
+                            DEFAULT_CHAT_FRAME:AddMessage("Addon \"Clique\" was not found.");
+                            self:Hide();
+                        end
+                    </OnClick>
+                </Scripts>
+            </Button>
             <CheckButton name="TSB_SpellButton1" inherits="TSB_SpellButtonTemplate" id="1">
                 <Anchors>
                     <Anchor point="TOPLEFT">
@@ -827,11 +853,15 @@
                 -- you're trying to target a specific rank button, and then moving your mouse back onto the frame to hover over a rank button again.
                 -- Without THIS safeguard, we'd close their window and very quickly piss off the user, since they'd constantly fear mouse-accidents.
                 local mouseFocus = GetMouseFocus();
-                if (mouseFocus and (
-                    (mouseFocus == TSB_RankViewer) -- Extremely unlikely since the "RankViewer" is a 1x1 pixel window, hehe.
-                    or (mouseFocus:GetParent() == TSB_RankViewer) -- All spell rank buttons are parented to the "RankViewer".
-                )) then
-                    return;
+                if (mouseFocus) then
+                    local focusParent = mouseFocus:GetParent();
+                    if (
+                        (mouseFocus == TSB_RankViewer) -- Extremely unlikely since the "RankViewer" is a 1x1 pixel window, hehe.
+                        or (focusParent == TSB_RankViewer) -- All spell rank buttons are parented to the "RankViewer".
+                        or (focusParent and focusParent:GetParent() == TSB_RankViewer) -- NOTE: Workaround for "Clique" overlay frames.
+                    ) then
+                        return;
+                    end
                 end
 
                 -- If we've come this far, we're hovering over something that ISN'T the spellbook frame or the "spell ranks" window/buttons, which

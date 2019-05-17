@@ -32,6 +32,7 @@ local GetSpellCooldown = GetSpellCooldown;
 local GetSpellName = GetSpellName;
 local GetSpellTexture = GetSpellTexture;
 local HasPetSpells = HasPetSpells;
+local InCombatLockdown = InCombatLockdown;
 local IsPassiveSpell = IsPassiveSpell;
 local IsSelectedSpell = IsSelectedSpell;
 local SetCVar = SetCVar;
@@ -53,8 +54,10 @@ local format = format;
 local ipairs = ipairs;
 local pairs = pairs;
 local select = select;
+local setfenv = setfenv;
 local strlen = strlen;
 local tconcat = table.concat;
+local tinsert = table.insert;
 local tostring = tostring;
 local type = type;
 local unpack = table.unpack or unpack;
@@ -658,6 +661,266 @@ local function TSB_EnhanceBlizzardSpellbook()
     end
 end
 
+-- Addon Support: Clique.
+local function TSB_CliqueMakeButtonOverlay(parent)
+    assert(type(parent) == "table" and parent.GetParent, "Bad argument #1 to 'TSB_CliqueMakeButtonOverlay' (table expected)");
+
+    if (not parent.cliqueOverlay) then
+        -- Ensure that the parent button belongs to either TinyBook's main frame or the RankViewer frame.
+        local parentOwner = parent:GetParent();
+        assert(parentOwner == TSB_SpellBookFrame or parentOwner == TSB_RankViewer, "Bad argument #1 to 'TSB_CliqueMakeButtonOverlay' (TinyBook or RankViewer button expected)");
+
+        -- Determine the type of parent button; either "main" spellbook or "rank" viewer.
+        local parentType = parentOwner == TSB_SpellBookFrame and "main" or "rank";
+
+        -- Create the overlay button.
+        -- NOTE: This code is based on "Clique:OptionsOnLoad", so that we set up our overlays the same way.
+        local btn = CreateFrame("Button", nil, parent);
+        btn:SetID(parent:GetID()); -- Not really necessary... Clique doesn't use the overlay's ID for anything.
+        btn:SetHighlightTexture([[Interface\Buttons\ButtonHilight-Square]]);
+        btn:RegisterForClicks("AnyUp");
+        btn:SetAllPoints(parent); -- Fully cover up the same area as the parent.
+        btn:SetScript("OnClick", function(frame, button)
+            Clique:SpellBookButtonPressed(frame, button);
+        end);
+        btn:SetScript("OnEnter", function(self)
+            -- Ensure that we only show the highlight glow if there's an ENABLED parent-button (having a spell attached to it).
+            -- NOTE: TinyBook itself refuses to glow buttons that are PASSIVE spells, but we don't emulate that here; instead,
+            -- every spellbutton overlay always glows when hovered. We don't need to do anything more here, since whenever the
+            -- user attempts to BIND a "passive" spell, Clique refuses and warns them that passive spells cannot be bound.
+            local parent = self:GetParent();
+            local highlightTexture = self:GetHighlightTexture();
+            if (parent:IsEnabled() == 1) then -- NOTE: Returns 1 or 0, both of which are "truthy", so we must check for equality.
+                highlightTexture:Show();
+            else
+                highlightTexture:Hide();
+            end
+
+            _G[self.parentType == "main" and "TSB_SpellButton_OnEnter" or "TSB_SpellRankButton_OnEnter"](parent);
+        end);
+        btn:SetScript("OnLeave", function(self)
+            _G[self.parentType == "main" and "TSB_SpellButton_OnLeave" or "TSB_SpellRankButton_OnLeave"](self:GetParent());
+        end);
+        btn.parentType = parentType; -- NOTE: "main" or "rank".
+
+        -- Link the parent to the overlay layer, and also remember it in our list of all overlays.
+        parent.cliqueOverlay = btn; -- Ensures that we won't create multiple overlays for this parent in the future.
+        tinsert(TSB_SpellBookFrame.thirdPartyAddons.Clique.buttonOverlays, btn);
+
+        -- Show immediately if the Clique frame is currently marked as visible.
+        if (CliqueFrame and CliqueFrame:IsShown()) then btn:Show(); else btn:Hide(); end
+    end
+
+    return parent.cliqueOverlay;
+end
+
+-- Addon Support: Clique.
+local function TSB_CliqueIntegration()
+    if ((not Clique) or (not Clique.SpellBookButtonPressed) or TSB_SpellBookFrame.thirdPartyAddons.Clique) then return; end
+    TSB_SpellBookFrame.thirdPartyAddons.Clique = {
+        buttonOverlays = {}, -- Will hold references to all created overlays.
+        clickedFrame = nil, -- Holds the overlay frame that was last-clicked.
+    };
+
+    -- Build the fake environment table.
+    -- NOTE: Overrides here will be visible in both the function's global environment and its _G table (ie. both "print(foo)" and "print(_G.foo)").
+    -- NOTE: Luckily, none of the TBC Clique versions write any globals to locals (ie. "local SpellBook_GetSpellID = SpellBook_GetSpellID"),
+    -- which means our global table hook WILL be used by Clique, since their functions CONSTANTLY look up the most-recent global value!
+    local fakeEnvironment = {
+        -- Ensure that Clique's attempts to read SpellBookFrame.bookType reads from our frame instead, so that Clique looks up the correct spell.
+        -- NOTE: In Clique r102, v2.2.1 and TBC-143, the ONLY function which reads "SpellBookFrame.bookType" is "Clique:SpellBookButtonPressed"! :-)
+        SpellBookFrame = TSB_SpellBookFrame,
+
+        -- Whenever they (Clique) request the spell information for the clicked overlay button, give them the value for that TinyBook button.
+        -- NOTE: Returns TSB_MAX_SPELLS in case of failure; that's the last slot ID which is so high that it's always an empty/non-existent spell.
+        SpellBook_GetSpellID = function(btnId, ...)
+            -- Determine which frame was clicked. This is extremely important since we need to know which button to read the spell details from.
+            -- NOTE: We never have to worry about outdated "clickedFrame" references, since it's ALWAYS set in our "Clique.SpellBookButtonPressed" hook.
+            local clickedFrame = TSB_SpellBookFrame.thirdPartyAddons.Clique.clickedFrame;
+            if ((not clickedFrame) or (not clickedFrame.parentType)) then
+                return TSB_MAX_SPELLS;
+            end
+
+            -- Read the clicked spell's ID, using the appropriate method for the clicked frame.
+            local parent = clickedFrame:GetParent();
+            local spellId, bookType;
+            if (clickedFrame.parentType == "main") then
+                spellId = TSB_GetSpellID(parent);
+                bookType = TSB_SpellBookFrame.bookType;
+                if (spellId == BAD_SPELL_ID) then
+                    spellId = TSB_MAX_SPELLS;
+                end
+            elseif (clickedFrame.parentType == "rank") then
+                if (TSB_RankViewer:IsShown()) then -- Only attempt a read if the rank-viewer is visible.
+                    spellId, bookType = TSB_SpellRankButton_GetSpellInfo(parent);
+                end
+                if ((not spellId) or bookType ~= TSB_SpellBookFrame.bookType) then -- Safeguards against invalid/mismatched button reads.
+                    spellId = TSB_MAX_SPELLS;
+                end
+            else -- Unknown or missing "parentType" value.
+                spellId = TSB_MAX_SPELLS;
+            end
+
+            return spellId;
+        end,
+    };
+
+    -- Link fake env's _G table to its env table (that's how Lua's real _G table works too; it's just a circular link to its own environment).
+    fakeEnvironment._G = fakeEnvironment;
+
+    -- Redirect missing env/_G lookups to real _G.
+    setmetatable(fakeEnvironment, { __index = _G });
+
+    -- Back up the original function and its environment.
+    local origFn = Clique.SpellBookButtonPressed;
+    local origEnvironment = getfenv(origFn); -- NOTE: Should normally be the same as the global _G table.
+
+    -- Replace Clique's "button pressed" function with one that dynamically uses the appropriate environment based on which spellbook was clicked.
+    -- NOTE: We'll only use the fake environment when the clicks originate from TinyBook buttons, otherwise we use the normal environment. Thanks to that,
+    -- we can even use Blizzard's spellbook and TinyBook side-by-side and it would still be possible to correctly assign spells from either window.
+    Clique.SpellBookButtonPressed = function(self, frame, button, ...)
+        -- Remember which frame was clicked, which is necessary for our "SpellBook_GetSpellID" hook to figure out which ID to retrieve (main or rank).
+        TSB_SpellBookFrame.thirdPartyAddons.Clique.clickedFrame = frame;
+
+        -- Use the appropriate environment based on whether the click happened in the Blizzard spellbook or TinyBook.
+        -- NOTE: Only the TinyBook overlay buttons have the "parentType" property, which is an easy way for us to detect those buttons.
+        local useBlizzard = not (frame and frame.parentType);
+
+        -- Set the function's environment. From now on, all calls to that function (from anywhere) will make it see the fake environment instead.
+        -- NOTE: The fake environment does NOT propagate down INTO any sub-calls made BY this function, so we must beware of that fact.
+        setfenv(origFn, useBlizzard and origEnvironment or fakeEnvironment);
+
+        -- Call the original function with the same parameters we were given.
+        origFn(self, frame, button, ...);
+
+        -- Forget which frame we clicked. Protects against someone manually running a "direct backup-reference" to "origFn" from somewhere else.
+        -- NOTE: This just ensures that if "origFn" is called from someone's old, direct reference (backed up BEFORE we replaced it), and it still
+        -- has the fake environment *somehow*, then our fake environment's function-hooks won't wrongly believe that we've clicked anything.
+        TSB_SpellBookFrame.thirdPartyAddons.Clique.clickedFrame = nil;
+
+        -- Restore the original environment since we're done with the function for now. Just ensures that we won't pollute it needlessly.
+        if (not useBlizzard) then
+            setfenv(origFn, origEnvironment);
+        end
+    end
+
+    -- Since we're dealing with both the regular spellbook and TinyBook, we need a function to dynamically move the Clique frame to a new parent.
+    -- NOTE: This function is highly efficient since it's designed to run very frequently in response to all kinds of hooks, events and actions.
+    -- NOTE: If the TinyBook frame isn't visible, this intentionally ALWAYS falls back to re-parenting to Blizzard's spellbook.
+    -- NOTE: The frame strata/levels will be fixed during EVERY re-parenting, since that always makes us inherit "MEDIUM" from TinyBook/Blizzard.
+    local fixCliqueParent = function()
+        -- First, ensure that the Clique options frame exists. It's created on-demand, so it may not be available yet.
+        if (not CliqueFrame) then return; end
+
+        -- Before we can proceed further, we MUST check if we're in TRUE lockdown. This is different from "in combat" (PLAYER_REGEN_DISABLED),
+        -- and only becomes true LATER in the combat state. That's why we can't use "TSB_CombatLockdown.inCombat", since that's true too early.
+        -- NOTE: We're checking this to ensure that we are ALLOWED to re-parent the frame correctly, otherwise the API calls below would be
+        -- semi-ignored and would put the frame in a very strange state, where SOME new settings apply and others don't...
+        if (InCombatLockdown()) then return; end
+
+        -- Check whether it has the correct parent already; if so, abort here...
+        local correctParent = TSB_SpellBookFrame:IsShown() and TSB_SpellBookFrame or SpellBookFrame;
+        if (CliqueFrame:GetParent() == correctParent) then return; end
+
+        -- Lastly, re-parent the Clique options frame to the new parent.
+        -- NOTE: The order of the code below is EXTREMELY important. World of Warcraft 2.4.3 for Windows (even via Wine on macOS/Linux) has a severe
+        -- crashing bug which happens in SOME scenarios when you attempt to "SetParent" an ALREADY-VISIBLE FRAME onto an ALREADY-VISIBLE PARENT. In
+        -- that case, WoW will appear to "ignore" the SetParent call (nothing will happen on-screen and "GetParent" will still return the OLD parent),
+        -- but the game has actually been put in a crash-ready state and can easily have a crash induced via all kinds of actions. The crash will pop
+        -- up an error dialog with "SMem3: Pointer does not refer to a valid allocated block of memory".
+        -- NOTE: The crash mentioned above can be 100% reproduced every time by FIRST editing our code below to move the ":Hide" call to AFTER the
+        -- ":SetParent" call. Then launch WoW, and open the TinyBook GUI (via "P" on the keyboard). Then click its buttons to open the Macro editor
+        -- and the Clique frame. Next, while those windows remain open, use the following code[1] in the game's chat-box ("nothing" will happen no
+        -- matter how many times you re-type the code), then press escape to close the Macro/Clique frames and then finally use the chatbox code[1]
+        -- again. The game will then show a loading screen and immediately crash.
+        -- - [1] Here's the chatbox code to use:
+        -- "/run if (MacroFrame) then CliqueFrame:SetParent(MacroFrame); if (CliqueFrame:GetParent() == MacroFrame) then ReloadUI() end end".
+        local shouldShow = CliqueFrame:IsShown(); -- NOTE: "IsShown" is very important, since "IsVisible" would be false if old parent is hidden.
+        CliqueFrame:Hide(); -- NOTE: We MUST hide here, BEFORE "SetParent", to protect against WoW 2.4.3's crash-bug mentioned above.
+        CliqueFrame:SetParent(correctParent); -- NOTE: Also sets our FrameLevel to parent's + 1, which ensures we render above parent even if our strata equals parent's.
+        CliqueFrame:SetPoint("LEFT", correctParent, "RIGHT", 15, 30); -- NOTE: We use the exact same offsets as "Clique:CreateOptionsFrame".
+        if (shouldShow) then CliqueFrame:Show(); end
+        if (Clique.FixFrameOrder) then -- Only exists in Clique Enhanced.
+            Clique:FixFrameOrder(true); -- Must fix strata/levels now since re-parenting always makes us inherit parent's strata.
+        end
+    end
+
+    -- Define the popup dialog to show if the user has the wrong version of Clique.
+    StaticPopupDialogs["TINYBOOK_WRONG_CLIQUE_VERSION"] = {
+        text = "WARNING: You are using an extremely buggy, super old version of Clique. You must install Clique Enhanced instead. Get it from the official website:",
+        button1 = OKAY, -- Locale-based text for "Okay".
+        button2 = CANCEL, -- Locale-based text for "Cancel". If we don't include button2, the editbox is misaligned.
+        hasEditBox = true,
+        OnShow = function()
+            local cliqueUrl = "https://github.com/VideoPlayerCode/CliqueEnhancedTBC";
+            local editBox = _G[this:GetName().."EditBox"];
+            editBox:SetText(cliqueUrl);
+            editBox:HighlightText(); -- Automatically select all text so that the user can just Ctrl-C.
+            print("Install Clique Enhanced from \"" .. cliqueUrl .. "\" and then restart World of Warcraft."); -- Also print the URL to the user's chat history box, so that they can read it after closing the dialog.
+        end,
+        timeout = 0, -- Don't automatically close the dialog.
+        whileDead = true,
+        hideOnEscape = false, -- Prevent people from lazily pressing escape to close the dialog without reading.
+        preferredIndex = STATICPOPUP_NUMDIALOGS, -- Use highest-possible static dialog index. Doing this avoids some UI taint.
+    };
+
+    -- Hook the main "toggle options GUI" function.
+    -- NOTE: The primary reason for hooking this is to ensure that we've set the correct CliqueFrame parent BEFORE the "Toggle" code runs,
+    -- so that its "is shown then hide, otherwise show" code works properly and toggles the frame visibility as intended!
+    local origToggleFn = Clique.Toggle;
+    Clique.Toggle = function(self, ...)
+        local cf = CliqueFrame;
+        fixCliqueParent(); -- Ensure we'll have the correct parent for when Toggle's internal "is shown" check runs.
+        origToggleFn(self, ...);
+        fixCliqueParent(); -- And ensure we're ending up with the correct parent afterwards. Not fully needed, due to "ToggleSpellBookButtons" hook below.
+        if ((not cf) and Clique.FixFrameOrder) then -- Only exists in Clique Enhanced.
+            Clique:FixFrameOrder(true); -- Ensure that we forcibly fix the initial strata immediately, the first time the frame was created.
+        end
+
+        if (CliqueFrame and CliqueFrame:IsShown()) then
+            -- Verify the user's Clique version EVERY time they try to open the GUI. This is INTENDED to annoy people into installing the correct Clique version,
+            -- since most people are retards and would just keep using the usual ULTRA BUGGY Clique releases they get from idiotic sites such as "weebly tbcaddons".
+            if (type(Clique.version) ~= "string" or (not Clique.version:find("^TBC%-143%-"))) then
+                Clique:Toggle(); -- Immediately hide Clique again.
+                StaticPopup_Show("TINYBOOK_WRONG_CLIQUE_VERSION");
+            end
+        end
+    end
+
+    -- Hook the function which is responsible for toggling the button overlays on/off.
+    -- NOTE: This is called from a lot of places (and Clique event handlers), INCLUDING at the end of "Clique:Toggle()".
+    local origToggleButtonsFn = Clique.ToggleSpellBookButtons;
+    Clique.ToggleSpellBookButtons = function(self, ...)
+        -- Ensure we'll have the correct parent for when our (and the original function's) "is shown" checks run below.
+        fixCliqueParent();
+
+        -- Toggle visibility of our own button-overlays, using the exact same conditional check as the official function.
+        local method = CliqueFrame:IsShown() and "Show" or "Hide";
+        for k,btn in ipairs(TSB_SpellBookFrame.thirdPartyAddons.Clique.buttonOverlays) do
+            btn[method](btn);
+        end
+
+        -- Take care of hiding/showing Clique's own buttons (theirs sit in the Blizzard spellbook).
+        origToggleButtonsFn(self, ...);
+    end
+
+    -- Insert the "create Clique overlay" hooks into all of our spell-buttons; both main-window and rank-viewer!
+    tinsert(TSB_SpellBookFrame.thirdPartyHooks.mainButtons, TSB_CliqueMakeButtonOverlay);
+    tinsert(TSB_SpellBookFrame.thirdPartyHooks.rankButtons, TSB_CliqueMakeButtonOverlay);
+
+    -- We also have to ensure that we properly switch active parent whenever the user switches back/forth between Blizzard and TinyBook.
+    -- NOTE: This is not 100% necessary since the CliqueFrame runs "Clique:ToggleSpellBookButtons" every time it becomes hidden, such as when its parent,
+    -- for example TSB_SpellBookFrame, becomes hidden. However, it IS necessary OnShow to guarantee that we'll always be properly re-parented to TinyBook.
+    -- NOTE: Another important feature of this is that when TinyBook auto-hides due to combat lockdown, it automatically runs its OnHide handler, which
+    -- quickly re-parents Clique back to Blizzard's frame (since TinyBook is hidden), thus ensuring that Clique has a proper, usable parent during combat!
+    tinsert(TSB_SpellBookFrame.thirdPartyHooks.bookOnShow, fixCliqueParent);
+    tinsert(TSB_SpellBookFrame.thirdPartyHooks.bookOnHide, fixCliqueParent);
+
+    -- Lastly, display a special button for toggling the Clique options. We don't want to use Clique's UGLY "spell school tab" button (which
+    -- it inserts into Blizzard's spellbook), since that's horrible. Instead, we'll place a clean "Clique" button next to our "Macros" button!
+    TSB_SpellBookCliqueButton:Show();
+end
+
 local function TSB_InjectThirdPartySupport()
     -- Holds data about which addons we've loaded support for, as well as which hooks we must run to support them.
     TSB_SpellBookFrame.thirdPartyAddons = {};
@@ -669,7 +932,7 @@ local function TSB_InjectThirdPartySupport()
     };
 
     -- Load the various addon support code.
-    -- NOTE: No third party addons are implemented yet!
+    TSB_CliqueIntegration();
 end
 
 function TSB_SpellBookFrame_OnLoad(self)
