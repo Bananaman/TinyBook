@@ -514,7 +514,7 @@
                         <OnClick>
                             if (TSB_CombatLockdown and TSB_CombatLockdown.inCombat) then
                                 - Protect against the "impossible" scenario where this (hidden-in-combat) button is SOMEHOW clicked in combat.
-                                DEFAULT_CHAT_FRAME:AddMessage('Macros cannot be modified in combat.');
+                                DEFAULT_CHAT_FRAME:AddMessage("Macros cannot be modified in combat.");
                                 return;
                             end
                             if (MacroFrame and MacroFrame:IsShown()) then

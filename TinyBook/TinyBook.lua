@@ -834,9 +834,9 @@ function TSB_SpellBookFrame_OnLoad(self)
         -- NOTE: Click handlers are marked as "*:OnClick" (without button-name info) in the call-stack text, whereas executions that began from
         -- the keyboard bindings are marked as "[string "TOGGLESPELLBOOK"]:1: in function <[string "TOGGLESPELLBOOK"]:1>" (or TOGGLEPETBOOK).
         local callStack = debugstack();
-        --print('---'); for s in callStack:gmatch("[^\r\n]+") do print('>>'..s); end print('---'); -- Easy inspection of stack contents.
+        --print("---"); for s in callStack:gmatch("[^\r\n]+") do print(">>"..s); end print("---"); -- Easy inspection of stack contents.
         --local clickCall = callStack:find(":OnClick"); -- Alternative: Detects if this was called from an OnClick handler (but cannot know WHICH button).
-        local bindingCall = callStack:match('%[string "(TOGGLE[A-Z]+BOOK)"%]');
+        local bindingCall = callStack:match("%[string \"(TOGGLE[A-Z]+BOOK)\"%]");
         if (bindingCall ~= "TOGGLESPELLBOOK" and bindingCall ~= "TOGGLEPETBOOK") then
             bindingCall = nil;
         end
@@ -868,7 +868,7 @@ function TSB_SpellBookFrame_OnLoad(self)
 
             -- If we're in combat and we've now opened the Blizzard frame, tell the user WHY Blizzard's opened!
             if ((not allowNextBlizzardSpellBook) and TSB_CombatLockdown.inCombat and isBlizzardShown) then
-                print('Opening regular spellbook due to combat lockdown.');
+                print("Opening regular spellbook due to combat lockdown.");
             end
 
             -- Since our "HideUIPanel" hook silences the "opening" sound of Blizzard's spellbook, we'll have to play their sound now.
