@@ -81,7 +81,7 @@ local TSB_SpellButton_UpdateSelection; -- Used by TSB_SpellButton_UpdateButton.
 -- Constants
 ------
 
-TSB_VERSION = 1001000; -- Version: "1.001.000" (format is MAJOR.MINOR.PATCH).
+TSB_VERSION = 1002000; -- Version: "1.002.000" (format is MAJOR.MINOR.PATCH).
 local BAD_SPELL_ID = -1000; -- Used internally to signal when a requested spell ID slot isn't within our SPELL_ID_LIST range. (Legal spells use 1+).
 local SPELL_ID_LIST = {}; -- Our compact spell list for the current "spell school" tab.
 local SPELL_ID_LIST_COUNT = 0; -- How many items in SPELL_ID_LIST.
